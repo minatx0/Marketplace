@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
@@ -6,6 +7,10 @@ import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 
+/**
+ * @title NFT Marketplace
+ * @dev Implements a marketplace for trading NFTs safely
+ */
 contract NFTMarketplace is ReentrancyGuard {
     using Counters for Counters.Counter;
     using Address for address;
@@ -23,6 +28,7 @@ contract NFTMarketplace is ReentrancyGuard {
         bool sold;
     }
 
+    // Events declaration for emitting on actions
     event NFTListed(
         uint256 indexed listingId,
         address indexed nftContract,
@@ -40,13 +46,24 @@ contract NFTMarketplace is ReentrancyGuard {
         uint256 price
     );
 
+    // Modifiers for reusability and readability
     modifier onlyNFTOwner(address nftContract, uint256 tokenId) {
         IERC721 nft = IERC721(nftContract);
         require(nft.ownerOf(tokenId) == msg.sender, "Caller is not the NFT owner");
         _;
     }
 
-    function listNFT(address nftContract, uint256 tokenId, uint256 price) external nonReentrant onlyNFTOwner(nftContract, tokenId) {
+    /**
+     * @dev Lists an NFT on the marketplace
+     * @param nftContract Address of the NFT contract
+     * @param tokenId Token ID of the NFT to list
+     * @param price Sale price for the NFT
+     */
+    function listNFT(address nftContract, uint256 tokenId, uint256 price) 
+        external 
+        nonReentrant 
+        onlyNFTOwner(nftContract, tokenId) 
+    {
         require(!_activeListings[nftContract][tokenId], "NFT already listed");
         require(price > 0, "Price must be greater than zero");
 
@@ -59,7 +76,16 @@ contract NFTMarketplace is ReentrancyGuard {
         emit NFTListed(listingId, nftContract, tokenId, msg.sender, price, false);
     }
 
-    function buyNFT(address nftContract, uint256 listingId) external payable nonReentrant {
+    /**
+     * @dev Buys an NFT listed on the marketplace
+     * @param nftContract Address of the NFT contract
+     * @param listingId ID of the listed NFT
+     */
+    function buyNFT(address nftContract, uint256 listingId) 
+        external 
+        payable 
+        nonReentrant 
+    {
         Listing memory listing = _listings[listingId];
         require(listing.seller != address(0), "Listing does not exist");
         require(!listing.sold, "NFT has already been sold");
@@ -74,6 +100,11 @@ contract NFTMarketplace is ReentrancyGuard {
         emit NFTPurchased(listingId, nftContract, listing.tokenId, msg.sender, listing.price);
     }
 
+    /**
+     * @dev Retrieves details about a specific listing
+     * @param listingId ID of the listing to query
+     * @return Listing details as a structured object
+     */
     function getListing(uint256 listingId) public view returns (Listing memory) {
         require(_listings[listingId].seller != address(0), "Listing does not exist");
         return _listings[listingId];
