@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
@@ -7,105 +6,83 @@ import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 
-/**
- * @title NFT Marketplace
- * @dev Implements a marketplace for trading NFTs safely
- */
 contract NFTMarketplace is ReentrancyGuard {
     using Counters for Counters.Counter;
     using Address for address;
 
-    Counters.Counter private _listingId;
+    Counters.Counter private _listingCounter;
     mapping(uint256 => Listing) private _listings;
-    mapping(address => mapping(uint256 => bool)) private _activeListings;
+    mapping(address => mapping(uint256 => bool)) private _listedNFTs;
 
     struct Listing {
-        uint256 listingId;
-        address nftContract;
+        uint256 id;
+        address nftAddress;
         uint256 tokenId;
         address payable seller;
         uint256 price;
-        bool sold;
+        bool isSold;
     }
 
-    // Events declaration for emitting on actions
     event NFTListed(
-        uint256 indexed listingId,
-        address indexed nftContract,
-        uint256 indexed tokenId,
+        uint256 id,
+        address nftAddress,
+        uint256 tokenId,
         address seller,
         uint256 price,
-        bool sold
+        bool isSold
     );
 
-    event NFTPurchased(
-        uint256 indexed listingId,
-        address indexed nftContract,
-        uint256 indexed tokenId,
+    event NFTSold(
+        uint256 id,
+        address nftAddress,
+        uint256 tokenId,
         address buyer,
-        uint256 price
+        uint256 paidPrice
     );
 
-    // Modifiers for reusability and readability
-    modifier onlyNFTOwner(address nftContract, uint256 tokenId) {
-        IERC721 nft = IERC721(nftContract);
-        require(nft.ownerOf(tokenId) == msg.sender, "Caller is not the NFT owner");
+    modifier isNFTOwner(address nftAddress, uint256 tokenId) {
+        IERC721 nftToken = IERC721(nftAddress);
+        require(nftToken.ownerOf(tokenId) == msg.sender, "Caller is not the NFT owner");
         _;
     }
 
-    /**
-     * @dev Lists an NFT on the marketplace
-     * @param nftContract Address of the NFT contract
-     * @param tokenId Token ID of the NFT to list
-     * @param price Sale price for the NFT
-     */
-    function listNFT(address nftContract, uint256 tokenId, uint256 price) 
+    function listNFT(address nftAddress, uint256 tokenId, uint256 price) 
         external 
         nonReentrant 
-        onlyNFTOwner(nftContract, tokenId) 
+        isNFTOwner(nftAddress, tokenId) 
     {
-        require(!_activeListings[nftContract][tokenId], "NFT already listed");
-        require(price > 0, "Price must be greater than zero");
+        require(!_listedNFTs[nftAddress][tokenId], "NFT is already listed");
+        require(price > 0, "Price must be above zero");
 
-        _listingId.increment();
-        uint256 listingId = _listingId.current();
+        _listingCounter.increment();
+        uint256 newListingId = _listingCounter.current();
 
-        _listings[listingId] = Listing(listingId, nftContract, tokenId, payable(msg.sender), price, false);
-        _activeListings[nftContract][tokenId] = true;
+        _listings[newListingId] = Listing(newListingId, nftAddress, tokenId, payable(msg.sender), price, false);
+        _listedNFTs[nftAddress][tokenId] = true;
 
-        emit NFTListed(listingId, nftContract, tokenId, msg.sender, price, false);
+        emit NFTListed(newListingId, nftAddress, tokenId, msg.sender, price, false);
     }
 
-    /**
-     * @dev Buys an NFT listed on the marketplace
-     * @param nftContract Address of the NFT contract
-     * @param listingId ID of the listed NFT
-     */
-    function buyNFT(address nftContract, uint256 listingId) 
+    function purchaseNFT(address nftAddress, uint256 listingId) 
         external 
         payable 
         nonReentrant 
     {
-        Listing memory listing = _listings[listingId];
+        Listing storage listing = _listings[listingId];
         require(listing.seller != address(0), "Listing does not exist");
-        require(!listing.sold, "NFT has already been sold");
-        require(msg.value >= listing.price, "Insufficient payment");
+        require(!listing.isSold, "NFT is already sold");
+        require(msg.value >= listing.price, "Insufficient funds to purchase NFT");
 
         listing.seller.transfer(listing.price);
-        IERC721(nftContract).safeTransferFrom(listing.seller, msg.sender, listing.tokenId);
+        IERC721(nftAddress).safeTransferFrom(listing.seller, msg.sender, listing.tokenId);
 
-        _listings[listingId].sold = true;
-        _activeListings[nftContract][listing.tokenId] = false;
+        listing.isSold = true;
+        _listedNFTs[nftAddress][listing.tokenId] = false;
 
-        emit NFTPurchased(listingId, nftContract, listing.tokenId, msg.sender, listing.price);
+        emit NFTSold(listingId, nftAddress, listing.tokenId, msg.sender, listing.price);
     }
 
-    /**
-     * @dev Retrieves details about a specific listing
-     * @param listingId ID of the listing to query
-     * @return Listing details as a structured object
-     */
-    function getListing(uint256 listingId) public view returns (Listing memory) {
+    function getListingDetails(uint256 listingId) public view returns (Listing memory) {
         require(_listings[listingId].seller != address(0), "Listing does not exist");
         return _listings[listingId];
     }
