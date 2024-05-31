@@ -10,80 +10,80 @@ contract NFTMarketplace is ReentrancyGuard {
     using Counters for Counters.Counter;
     using Address for address;
 
-    Counters.Counter private _listingCounter;
-    mapping(uint256 => Listing) private _listings;
-    mapping(address => mapping(uint256 => bool)) private _listedNFTs;
+    Counters.Counter private _totalListings; 
+    mapping(uint256 => Listing) private _listingsMap; 
+    mapping(address => mapping(uint256 => bool)) private _isNFTListed; 
 
     struct Listing {
-        uint256 id;
-        address nftAddress;
+        uint256 listingId;
+        address nftContractAddress;
         uint256 tokenId;
-        address payable seller;
-        uint256 price;
-        bool isSold;
+        address payable sellerAddress;
+        uint256 listingPrice;
+        bool soldStatus;
     }
 
     event NFTListed(
-        uint256 id,
-        address nftAddress,
+        uint256 listingId,
+        address nftContractAddress,
         uint256 tokenId,
-        address seller,
-        uint256 price,
-        bool isSold
+        address sellerAddress,
+        uint256 listingPrice,
+        bool soldStatus
     );
 
     event NFTSold(
-        uint256 id,
-        address nftAddress,
+        uint256 listingId,
+        address nftContractAddress,
         uint256 tokenId,
-        address buyer,
+        address buyerAddress,
         uint256 paidPrice
     );
 
-    modifier isNFTOwner(address nftAddress, uint256 tokenId) {
-        IERC721 nftToken = IERC721(nftAddress);
+    modifier ownerOfNFT(address nftContractAddress, uint256 tokenId) {
+        IERC721 nftToken = IERC721(nftContractAddress);
         require(nftToken.ownerOf(tokenId) == msg.sender, "Caller is not the NFT owner");
         _;
     }
 
-    function listNFT(address nftAddress, uint256 tokenId, uint256 price) 
+    function listNFT(address nftContractAddress, uint256 tokenId, uint256 price) 
         external 
         nonReentrant 
-        isNFTOwner(nftAddress, tokenId) 
+        ownerOfNFT(nftContractAddress, tokenId) 
     {
-        require(!_listedNFTs[nftAddress][tokenId], "NFT is already listed");
+        require(!_isNFTListed[nftContractAddress][tokenId], "NFT is already listed");
         require(price > 0, "Price must be above zero");
 
-        _listingCounter.increment();
-        uint256 newListingId = _listingCounter.current();
+        _totalListings.increment();
+        uint256 newListingId = _totalListings.current();
 
-        _listings[newListingId] = Listing(newListingId, nftAddress, tokenId, payable(msg.sender), price, false);
-        _listedNFTs[nftAddress][tokenId] = true;
+        _listingsMap[newListingId] = Listing(newListingId, nftContractAddress, tokenId, payable(msg.sender), price, false);
+        _isNFTListed[nftContractAddress][tokenId] = true;
 
-        emit NFTListed(newListingId, nftAddress, tokenId, msg.sender, price, false);
+        emit NFTListed(newListingId, nftContractAddress, tokenId, msg.sender, price, false);
     }
 
-    function purchaseNFT(address nftAddress, uint256 listingId) 
+    function purchaseNFT(address nftContractAddress, uint256 listingId) 
         external 
         payable 
         nonReentrant 
     {
-        Listing storage listing = _listings[listingId];
-        require(listing.seller != address(0), "Listing does not exist");
-        require(!listing.isSold, "NFT is already sold");
-        require(msg.value >= listing.price, "Insufficient funds to purchase NFT");
+        Listing storage listing = _listingsMap[listingId];
+        require(listing.sellerAddress != address(0), "Listing does not exist");
+        require(!listing.soldStatus, "NFT is already sold");
+        require(msg.value >= listing.listingPrice, "Insufficient funds to purchase NFT");
 
-        listing.seller.transfer(listing.price);
-        IERC721(nftAddress).safeTransferFrom(listing.seller, msg.sender, listing.tokenId);
+        listing.sellerAddress.transfer(listing.listingPrice);
+        IERC721(nftContractAddress).safeTransferFrom(listing.sellerAddress, msg.sender, listing.tokenId);
 
-        listing.isSold = true;
-        _listedNFTs[nftAddress][listing.tokenId] = false;
+        listing.soldStatus = true;
+        _isNFTListed[nftContractAddress][listing.tokenId] = false;
 
-        emit NFTSold(listingId, nftAddress, listing.tokenId, msg.sender, listing.price);
+        emit NFTSold(listingId, nftContractAddress, listing.tokenId, msg.sender, listing.listingPrice);
     }
 
     function getListingDetails(uint256 listingId) public view returns (Listing memory) {
-        require(_listings[listingId].seller != address(0), "Listing does not exist");
-        return _listings[listingId];
+        require(_listingsMap[listingId].sellerAddress != address(0), "Listing does not exist");
+        return _listingsMap[listingId];
     }
 }
