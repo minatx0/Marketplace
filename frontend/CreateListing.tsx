@@ -1,28 +1,44 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Web3 from 'web3';
 import NFTContractABI from './NFTContractABI.json';
+
+const web3 = new Web3(process.env.REACT_APP_PROVIDER_URL);
 
 const CreateNFTListingForm: React.FC = () => {
   const [contractAddress, setContractAddress] = useState('');
   const [tokenId, setTokenId] = useState('');
   const [price, setPrice] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [nftContract, setNftContract] = useState<any>(null);
+  const [account, setAccount] = useState<string>('');
 
-  const web3 = new Web3(process.env.REACT_APP_PROVIDER_URL);
+  useEffect(() => {
+    const fetchAccounts = async () => {
+      const accounts = await web3.eth.getAccounts();
+      if (accounts.length > 0) {
+        setAccount(accounts[0]);
+      }
+    };
+
+    fetchAccounts();
+  }, []);
+
+  useEffect(() => {
+    if (!contractAddress) return;
+    
+    const contractInstance = new web3.eth.Contract(NFTContractABI as any, contractAddress);
+    setNftContract(contractInstance);
+  }, [contractAddress]);
 
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!nftContract || !account) return;
+
     setIsSubmitting(true);
     try {
-      const nftContract = new web3.eth.Contract(
-        NFTContractABI as any,
-        contractAddress,
-      );
-      const accounts = await web3.eth.getAccounts();
-
       await nftContract.methods
         .createListing(tokenId, web3.utils.toWei(price, 'ether'))
-        .send({ from: accounts[0] });
+        .send({ from: account });
       
       alert('NFT Listing created successfully!');
     } catch (error) {
