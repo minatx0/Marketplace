@@ -8,28 +8,36 @@ const NFTMarketplace: React.FC = () => {
   const [userWalletAddress, setUserWalletAddress] = useState<string>('');
 
   useEffect(() => {
-    const connectWallet = async () => {
-      if (window.ethereum) {
-        try {
-          await window.ethereum.request({ method: 'eth_requestAccounts' });
-          const web3 = new Web3(window.ethereum);
-          setWeb3(web3);
-          const accounts = await web5.eth.getAccounts();
-          if (accounts.length > 0) {
-            setUserWalletAddress(accounts[0]);
-          } else {
-            console.error('No Ethereum accounts found.');
-          }
-        } catch (error) {
-          console.error('Failed to access Ethereum accounts:', error);
-        }
-      } else {
-        console.error('MetaMask is not installed. Please install it to use this application.');
-      }
-    };
-
-    connectWallet();
+    connectWallet().catch(logError);
   }, []);
+
+  const logError = (error: any) => {
+    console.error("Blockchain interaction error:", error);
+  };
+
+  const connectWallet = async () => {
+    if (window.ethereum) {
+      try {
+        await window.ethereum.request({ method: 'eth_requestAccounts' });
+        const web3Instance = new Web3(window.ethereum);
+        setWeb3(web3Instance);
+        const accounts = await web3Instance.eth.getAccounts();
+        setAccountAddress(accounts);
+      } catch (error) {
+        logError(error);
+      }
+    } else {
+      console.error('MetaMask is not installed. Please install it to use this application.');
+    }
+  };
+
+  const setAccountAddress = (accounts: string[]) => {
+    if (accounts.length > 0) {
+      setUserWalletAddress(accounts[0]);
+    } else {
+      console.error('No Ethereum accounts found.');
+    }
+  };
 
   return (
     <div>
