@@ -2,90 +2,91 @@ import React, { useState, useEffect } from 'react';
 import Web3 from 'web3';
 import NFTContractABI from './NFTContractABI.json';
 
-const web3 = new Web3(process.env.REACT_APP_PROVIDER_URL);
+const web3Instance = new Web3(process.env.REACT_APP_PROVIDER_URL);
 
-const CreateNFTListingForm: React.FC = () => {
-  const [contractAddress, setContractAddress] = useState('');
-  const [tokenId, setTokenId] = useState('');
-  const [price, setPrice] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [nftContract, setNftContract] = useState<any>(null);
-  const [account, setAccount] = useState<string>('');
+const NFTListingForm: React.FC = () => {
+  const [nftContractAddress, setNFTContractAddress] = useState<string>('');
+  const [nftTokenId, setNFTTokenId] = useState<string>('');
+  const [listingPriceETH, setListingPriceETH] = useState<string>('');
+  const [isListingInProgress, setIsListingInProgress] = useState<boolean>(false);
+  const [nftContractInstance, setNFTContractInstance] = useState<any>(null);
+  const [userAccountAddress, setUserAccountAddress] = useState<string>('');
 
   useEffect(() => {
-    const fetchAccounts = async () => {
-      const accounts = await web3.eth.getAccounts();
+    const loadUserAccount = async () => {
+      const accounts = await web3Instance.eth.getAccounts();
       if (accounts.length > 0) {
-        setAccount(accounts[0]);
+        setUserAccountAddress(accounts[0]);
       }
     };
 
-    fetchAccounts();
+    loadUserXAccount();
   }, []);
 
   useEffect(() => {
-    if (!contractAddress) return;
+    if (!nftContractAddress) return;
     
-    const contractInstance = new web3.eth.Contract(NFTContractABI as any, contractAddress);
-    setNftContract(contractInstance);
-  }, [contractAddress]);
+    const newContractInstance = new web3Instance.eth.Contract(NFTContractABI as any, nftyContractAddress);
+    setNFTContractInstance(newContractInstance);
+  }, [nftContractAddress]);
 
-  const handleFormSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!nftContract || !account) return;
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!nftContractInstance || !userAccountAddress) return;
 
-    setIsSubmitting(true);
+    setIsListingInProgress(true);
+
     try {
-      await nftContract.methods
-        .createListing(tokenId, web3.utils.toWei(price, 'ether'))
-        .send({ from: account });
+      await nftContractInstance.methods
+        .createListing(nftTokenId, web3Instance.utils.toWei(listingPriceETH, 'ether'))
+        .send({ from: userAccountAddress });
       
       alert('NFT Listing created successfully!');
     } catch (error) {
       console.error('Error creating NFT listing: ', error);
-      alert('Failed to create listing.');
+      alert('Failed to create the listing.');
     } finally {
-      setIsSubmitting(false);
+      setIsListingInProgress(false);
     }
   };
 
   return (
-    <form onSubmit={handleFormSubmit}>
+    <form onSubmit={handleSubmit}>
       <div>
-        <label htmlFor="contractAddress">Contract Address</label>
+        <label htmlFor="nftContractAddress">Contract Address</label>
         <input
           type="text"
-          id="contractAddress"
-          value={contractAddress}
-          onChange={(e) => setContractAddress(e.target.value)}
+          id="nftContractAddress"
+          value={nftContractAddress}
+          onChange={(e) => setNFTContractAddress(e.target.value)}
           required
         />
       </div>
       <div>
-        <label htmlFor="tokenId">Token ID</label>
+        <label htmlFor="nftTokenId">Token ID</label>
         <input
           type="text"
-          id="tokenId"
-          value={tokenId}
-          onChange={(e) => setTokenId(e.target.value)}
+          id="nftTokenId"
+          value={nftTokenId}
+          onChange={(e) => setNFTTokenId(e.target.value)}
           required
         />
       </div>
       <div>
-        <label htmlFor="price">Price (ETH)</label>
+        <label htmlFor="listingPriceETH">Price (ETH)</label>
         <input
           type="text"
-          id="price"
-          value={price}
-          onChange={(e) => setPrice(e.target.value)}
+          id="listingPriceETH"
+          value={listingPriceETH}
+          onChange={(e) => setListingPriceETH(e.target.value)}
           required
         />
       </div>
-      <button type="submit" disabled={isSubmitting}>
-        {isSubmitting ? 'Creating...' : 'Create Listing'}
+      <button type="submit" disabled={isListingInProgress}>
+        {isListingInProgress ? 'Creating...' : 'Create Listing'}
       </button>
     </form>
   );
 };
 
-export default CreateNFTListingForm;
+export default NFTListingForm;
