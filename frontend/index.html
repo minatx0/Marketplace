@@ -4,9 +4,112 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>React App</title>
+    <style>
+        :root {
+            --background-color: #fff;
+            --text-color: #000;
+        }
+
+        [data-theme='dark'] {
+            --background-color: #333;
+            --text-color: #fff;
+        }
+
+        body {
+            background-color: var(--background-color);
+            color: var(--text-color);
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        .theme-switch-wrapper {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        .theme-switch {
+            display: inline-block;
+            height: 34px;
+            position: relative;
+            width: 60px;
+        }
+
+        .theme-switch input {
+            display:none;
+        }
+
+        .slider {
+            background-color: #ccc;
+            bottom: 0;
+            cursor: pointer;
+            left: 0;
+            position: absolute;
+            right: 0;
+            top: 0;
+            transition: .4s;
+        }
+
+        .slider:before {
+            background-color: #fff;
+            bottom: 4px;
+            content: "";
+            height: 26px;
+            left: 4px;
+            position: absolute;
+            transition: .4s;
+            width: 26px;
+        }
+
+        input:checked + .slider {
+            background-color: #66bb6a;
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
+
+        .slider.round {
+            border-radius: 34px;
+        }
+
+        .slider.round:before {
+            border-radius: 50%;
+        }
+    </style>
 </head>
 <body>
     <div id="root"></div>
+    <div class="theme-switch-wrapper">
+        <label class="theme-switch" for="checkbox">
+            <input type="checkbox" id="checkbox" />
+            <div class="slider round"></div>
+        </label>
+    </div>
+
     <script src="./path/to/your/compiled/react-app.js"></script>
+    <script>
+        const toggleSwitch = document.querySelector('.theme-switch input[type="checkbox"]');
+
+        function switchTheme(e) {
+            if (e.target.checked) {
+                document.documentElement.setAttribute('data-theme', 'dark');
+                localStorage.setItem('theme', 'dark'); 
+            } else {
+                document.documentElement.setAttribute('data-theme', 'light');
+                localStorage.setItem('theme', 'light'); 
+            }   
+        }
+
+        toggleSwitch.addEventListener('change', switchTheme, false);
+
+        const currentTheme = localStorage.getItem('theme') ? localStorage.getItem('theme') : null;
+        if (currentTheme) {
+            document.documentElement.setAttribute('data-theme', currentTheme);
+            if (currentTheme === 'dark') {
+                toggleSwitch.checked = true;
+            }
+        }
+    </script>
 </body>
 </html>
