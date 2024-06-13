@@ -18,10 +18,9 @@ const NFT_CONTRACT_ABI = [
     "type": "function",
   },
 ];
-const NFT_CONTRACT_ADDRESS = process.env.REACT_APP_NFT_CONTRACT_ADDRESS;
+const NFT_CONTRACT_ADDRESS = process.env.REACT_APP_NFT_CONTRACT_ADDRESS || '';
 
-// Duration to cache listings, e.g., 5 minutes (300000 milliseconds)
-const CACHE_DURATION = 300000;
+const CACHE_DURATION = 300000; // 5 minutes
 
 const NFTListings: React.FC = () => {
   const [listings, setListings] = useState<NFTListing[]>([]);
@@ -29,28 +28,16 @@ const NFTListings: React.FC = () => {
   useEffect(() => {
     const fetchNFTListings = async () => {
       try {
-        // Check for existing cache
-        const listingsCache = localStorage.getItem('nftListingsCache');
-        const now = new Date().getTime();
-        if (listingsCache) {
-          const { timestamp, data } = JSON.parse(listingsCache);
-          // Use cached data if it's still valid
-          if (now - timestamp < CACHE_DURATION) {
-            setListings(data);
-            return; // Stop execution to avoid API call
-          }
+        const cachedListings = getCachedListings();
+        if (cachedListings) {
+          setListings(cachedListings);
+          return;
         }
 
         if (typeof window.ethereum !== 'undefined') {
-          const provider = new ethers.providers.Web3Provider(window.ethereum);
-          const contract = new ethers.Contract(NFT_CONTRACT_ADDRESS, NFT_CONTRACT_ABI, provider);
-          const data: NFTListing[] = await contract.fetchListings();
-
-          // Update state with fresh data
-          setListings(data);
-
-          // Cache the new data along with current timestamp
-          localStorage.setItem('nftListingsCache', JSON.stringify({ timestamp: now, data }));
+          const freshListings = await fetchListingsFromBlockchain();
+          setListings(freshListings);
+          cacheListings(freshListings);
         }
       } catch (error) {
         console.error('Failed to fetch NFT listings:', error);
@@ -77,5 +64,25 @@ const NFTListings: React.FC = () => {
     </div>
   );
 };
+
+async function fetchListingsFromBlockchain(): Promise<NFTListing[]> {
+  const provider = new ethers.providers.Web3Provider(window.ethereum);
+  const contract = new ethers.Contract(NFT_CONTRACT_ADDRESS, NFT_CONTRACT_ABI, provider);
+  return contract.fetchListings();
+}
+
+function getCachedListings(): NFTListing[] | null {
+  const listingsCache = localStorage.getItem('nftListingsCache');
+  if (!listingsCache) return null;
+
+  const { timestamp, data } = JSON.parse(listingsCache);
+  const isCacheValid = new Date().getTime() - timestamp < CACHE_DURATION;
+  return isCacheValid ? data : null;
+}
+
+function cacheListings(listings: NFTListing[]): void {
+  const timestamp = new Date().getTime();
+  localStorage.setItem('nftListingsCache', JSON.stringify({ timestamp, data: listings }));
+}
 
 export default NFTListings;
