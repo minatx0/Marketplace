@@ -1,29 +1,29 @@
-function memoize(fn: (...args: any[]) => any) {
-    const cache = new Map<string, any>();
+function memoizeFunction(fn: (...args: any[]) => any) {
+    const resultCache = new Map<string, any>();
     return (...args: any[]) => {
-        const key = JSON.stringify(args);
-        if (cache.has(key)) return cache.get(key);
+        const cacheKey = JSON.stringify(args);
+        if (resultCache.has(cacheKey)) return resultCache.get(cacheKey);
 
         const result = fn(...args);
-        cache.set(key, result);
+        resultCache.set(cacheKey, result);
         return result;
     };
 }
 
-const expensiveFunction = (num: number) => {
-    console.log('Expensive computation for', num);
+const computeExpensively = (num: number) => {
+    console.log('Performing expensive computation for', num);
     return num * 2; // Placeholder for an expensive computation
 };
 
-const memoizedExpensiveFunction = memoize(expensiveFunction);
+const memoizedComputeExpensively = memoizeFunction(computeExpensively);
 
-console.log(memoizedExpensiveFunction(5)); // Expensive computation is performed
-console.log(memoizedExpensiveFunction(5)); // Result is returned from cache, computation is skipped
+console.log(memoizedComputeExpensively(5)); // Expensive computation is performed
+console.log(memoizedComputeExpensively(5)); // Result is returned from cache, computation is skipped
 
 import React, { useMemo } from 'react';
 
-const ExpensiveComponent = ({ value }) => {
-    const memoizedValue = useMemo(() => expensiveFunction(value), [value]);
+const ExpensiveComputationComponent = ({ value }) => {
+    const memoizedComputationResult = useMemo(() => computeExpensively(value), [I value]);
 
-    return <div>{memoizedValue}</div>;
+    return <div>{memoizedComputationResult}</div>;
 };
